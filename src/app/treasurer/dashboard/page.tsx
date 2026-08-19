@@ -32,37 +32,37 @@ function TreasurerDashboardContent() {
   const [loading, setLoading] = useState(true);
   const [remindersLoading, setRemindersLoading] = useState(false);
 
-  useEffect(() => {
+  const fetchStats = async () => {
     if (!token) return;
+    try {
+      const response = await fetch('/api/analytics', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
-    const fetchStats = async () => {
-      try {
-        const response = await fetch('/api/analytics', {
-          headers: { Authorization: `Bearer ${token}` },
+      const data = await response.json();
+
+      if (data.success) {
+        setStats({
+          totalCollectedThisCycle: data.data.savings.totalPaid,
+          membersOutstanding:
+            data.data.savings.contributionSummary.missed +
+            data.data.savings.contributionSummary.late,
+          pendingLoans: data.data.loans.byStatus.ACTIVE,
+          defaultRate: data.data.loans.defaultRate,
         });
-
-        const data = await response.json();
-
-        if (data.success) {
-          setStats({
-            totalCollectedThisCycle: data.data.savings.totalPaid,
-            membersOutstanding:
-              data.data.savings.contributionSummary.missed +
-              data.data.savings.contributionSummary.late,
-            pendingLoans: data.data.loans.byStatus.ACTIVE,
-            defaultRate: data.data.loans.defaultRate,
-          });
-        }
-      } catch (error) {
-        console.error('Fetch error:', error);
-        addNotification('Error loading analytics', 'error');
-      } finally {
-        setLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Fetch error:', error);
+      addNotification('Error loading analytics', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchStats();
-  }, [token, addNotification]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const handleRunReminders = async () => {
     setRemindersLoading(true);
@@ -75,7 +75,19 @@ function TreasurerDashboardContent() {
       const data = await response.json();
 
       if (data.success) {
-        addNotification(`${data.data.remindersSent} reminder(s) sent`, 'success');
+        const { remindersSent, reconciliation } = data.data;
+        const parts = [`${remindersSent} reminder(s) sent`];
+        if (reconciliation?.contributionsCreated) {
+          parts.push(`${reconciliation.contributionsCreated} contribution(s) backfilled`);
+        }
+        if (reconciliation?.contributionsMarkedMissed) {
+          parts.push(`${reconciliation.contributionsMarkedMissed} marked missed`);
+        }
+        if (reconciliation?.loansDefaulted) {
+          parts.push(`${reconciliation.loansDefaulted} loan(s) defaulted`);
+        }
+        addNotification(parts.join(' · '), 'success');
+        fetchStats();
       } else {
         addNotification(data.error || 'Failed to send reminders', 'error');
       }

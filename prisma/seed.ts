@@ -34,8 +34,10 @@ async function main() {
       contribution_amount: 10000, // 10,000 RWF
       contribution_frequency: 'monthly',
       interest_rate: 15, // 15% interest on loans
-      cycle_start_date: new Date('2024-01-01'),
-      cycle_end_date: new Date('2024-12-31'),
+      // Cycle starts 6 months ago so it lines up with the contribution history
+      // seeded below, and stays open-ended (no end date) like a real ongoing group.
+      cycle_start_date: new Date(new Date().getFullYear(), new Date().getMonth() - 5, 1),
+      cycle_end_date: null,
     },
   });
 

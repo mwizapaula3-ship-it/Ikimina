@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/middleware';
 import prisma from '@/lib/prisma';
+import { reconcileGroup } from '@/lib/reconciliation';
 
 /**
  * POST /api/reminders/check - Check and send reminders (run reminder job)
@@ -21,6 +22,10 @@ export const POST = withAuth(async (req: NextRequest & { user?: any }) => {
         { status: 403 }
       );
     }
+
+    // Catch up overdue statuses first: backfill missed contributions, flip
+    // long-overdue LATE contributions to MISSED, and default overdue loans.
+    const reconciliation = await reconcileGroup(user.groupId, user.userId);
 
     const remindersToSend: any[] = [];
     const today = new Date();
@@ -198,6 +203,7 @@ export const POST = withAuth(async (req: NextRequest & { user?: any }) => {
       data: {
         remindersSent: remindersToSend.length,
         reminders: remindersToSend,
+        reconciliation,
       },
     });
   } catch (error: any) {

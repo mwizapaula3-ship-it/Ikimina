@@ -8,6 +8,19 @@ import prisma from '@/lib/prisma';
 export const GET = withAuth(async (req: NextRequest & { user?: any }) => {
   try {
     const user = (req as any).user;
+
+    // Analytics are group-wide aggregates — Members only ever see their own data
+    if (user.role === 'MEMBER') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Insufficient permissions',
+          code: 'FORBIDDEN',
+        },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
 
     const dateFromStr = searchParams.get('dateFrom');

@@ -11,7 +11,6 @@ export const GET = withAuth(async (req: NextRequest & { user?: any }) => {
     const user = (req as any).user;
     const { searchParams } = new URL(req.url);
 
-    const memberId = searchParams.get('memberId');
     const status = searchParams.get('status');
     const dateFrom = searchParams.get('dateFrom');
     const dateTo = searchParams.get('dateTo');
@@ -21,8 +20,14 @@ export const GET = withAuth(async (req: NextRequest & { user?: any }) => {
       group_id: user.groupId,
     };
 
-    if (memberId) {
-      where.member_id = memberId;
+    if (user.role === 'MEMBER') {
+      // Members may only ever see their own contributions, regardless of what's requested
+      where.member_id = user.userId;
+    } else {
+      const memberId = searchParams.get('memberId');
+      if (memberId) {
+        where.member_id = memberId;
+      }
     }
 
     if (status) {

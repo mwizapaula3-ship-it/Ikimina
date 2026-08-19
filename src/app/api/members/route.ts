@@ -9,6 +9,18 @@ export const GET = withAuth(async (req: NextRequest & { user?: any }) => {
   try {
     const user = (req as any).user;
 
+    // Members must use GET /api/members/[id] with their own id — no group roster access
+    if (user.role === 'MEMBER') {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Insufficient permissions',
+          code: 'FORBIDDEN',
+        },
+        { status: 403 }
+      );
+    }
+
     const members = await prisma.user.findMany({
       where: {
         group_id: user.groupId,
