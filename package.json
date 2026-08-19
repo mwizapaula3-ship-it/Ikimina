@@ -1,0 +1,47 @@
+{
+  "name": "ikimina",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:seed": "prisma db seed",
+    "prisma:studio": "prisma studio"
+  },
+  "prisma": {
+    "seed": "ts-node --compiler-options {\"module\":\"commonjs\"} prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/adapter-better-sqlite3": "^7.9.1",
+    "@prisma/client": "^7.9.1",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "jsonwebtoken": "^9.0.3",
+    "next": "16.3.1",
+    "next-intl": "^4.13.7",
+    "pdfkit": "^0.19.1",
+    "prisma": "^7.9.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
+    "recharts": "^3.10.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.3.1",
+    "tailwindcss": "^4",
+    "tsx": "^4.23.12",
+    "typescript": "^5"
+  },
+  "allowScripts": {
+    "better-sqlite3@12.11.1": true,
+    "better-sqlite3@13.0.3": true
+  }
+}

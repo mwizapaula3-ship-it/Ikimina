@@ -1,0 +1,232 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// User roles enum
+enum Role {
+  SUPER_ADMIN
+  GROUP_ADMIN
+  TREASURER
+  SECRETARY
+  MEMBER
+}
+
+// Contribution status enum
+enum ContributionStatus {
+  PAID
+  LATE
+  MISSED
+}
+
+// Loan status enum
+enum LoanStatus {
+  ACTIVE
+  REPAID
+  DEFAULTED
+}
+
+// Group model
+model Group {
+  id                    String          @id @default(cuid())
+  name                  String
+  description           String?
+  contribution_amount   Int             // in RWF
+  contribution_frequency String          // weekly, monthly, etc.
+  interest_rate         Float           // percentage, e.g., 10.5 for 10.5%
+  cycle_start_date      DateTime
+  cycle_end_date        DateTime?
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
+
+  // Relations
+  users                 User[]
+  contributions         Contribution[]
+  loans                 Loan[]
+  reminders             Reminder[]
+  meetings              Meeting[]
+
+  @@index([created_at])
+}
+
+// User model
+model User {
+  id                    String          @id @default(cuid())
+  name                  String
+  phone                 String?         @unique
+  email                 String?         @unique
+  password_hash         String
+  role                  Role
+  group_id              String
+  is_active             Boolean         @default(true)
+  preferred_language    String          @default("en") // "en" or "rw"
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
+
+  // Relations
+  group                 Group           @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  contributions         Contribution[]  @relation("RecordedByUser")
+  contributions_as_member Contribution[] @relation("MemberContributions")
+  loans                 Loan[]
+  loan_repayments       LoanRepayment[]
+  reminders             Reminder[]      @relation("ReminderRecipient")
+  recorded_reminders    Reminder[]      @relation("ReminderRecorder")
+  meeting_attendance    MeetingAttendance[]
+
+  @@index([group_id])
+  @@index([email])
+  @@index([phone])
+}
+
+// Contribution model
+model Contribution {
+  id                    String          @id @default(cuid())
+  member_id             String
+  group_id              String
+  amount                Int             // in RWF
+  due_date              DateTime
+  paid_date             DateTime?
+  status                ContributionStatus @default(MISSED)
+  payment_method        String?         // cash, mobile_money, etc.
+  notes                 String?
+  recorded_by           String
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
+
+  // Relations
+  member                User           @relation("MemberContributions", fields: [member_id], references: [id], onDelete: Cascade)
+  group                 Group           @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  recorded_by_user      User           @relation("RecordedByUser", fields: [recorded_by], references: [id])
+
+  @@index([member_id])
+  @@index([group_id])
+  @@index([due_date])
+  @@index([status])
+}
+
+// Loan model
+model Loan {
+  id                    String          @id @default(cuid())
+  member_id             String
+  group_id              String
+  principal             Int             // in RWF
+  interest_rate         Float           // percentage
+  issue_date            DateTime
+  due_date              DateTime
+  status                LoanStatus      @default(ACTIVE)
+  total_interest        Int?            // calculated: principal * interest_rate / 100
+  notes                 String?
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
+
+  // Relations
+  member                User           @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  group                 Group           @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  repayments            LoanRepayment[]
+
+  @@index([member_id])
+  @@index([group_id])
+  @@index([status])
+  @@index([due_date])
+}
+
+// LoanRepayment model
+model LoanRepayment {
+  id                    String          @id @default(cuid())
+  loan_id               String
+  amount                Int             // in RWF
+  paid_date             DateTime        @default(now())
+  recorded_by           String
+  notes                 String?
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
+
+  // Relations
+  loan                  Loan           @relation(fields: [loan_id], references: [id], onDelete: Cascade)
+  recorded_by_user      User           @relation(fields: [recorded_by], references: [id])
+
+  @@index([loan_id])
+  @@index([paid_date])
+}
+
+// Reminder model (for simulated notifications)
+model Reminder {
+  id                    String          @id @default(cuid())
+  member_id             String
+  group_id              String
+  channel               String          @default("mock_sms") // "mock_sms", "mock_whatsapp", etc.
+  message               String
+  message_type          String?         // "contribution_due", "loan_due", "payment_reminder", etc.
+  sent_at               DateTime        @default(now())
+  status                String          @default("sent") // "sent", "read", "failed"
+  recorded_by           String?
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
+
+  // Relations
+  member                User           @relation("ReminderRecipient", fields: [member_id], references: [id], onDelete: Cascade)
+  group                 Group           @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  recorded_by_user      User?          @relation("ReminderRecorder", fields: [recorded_by], references: [id])
+
+  @@index([member_id])
+  @@index([group_id])
+  @@index([sent_at])
+  @@index([status])
+}
+
+// Meeting model
+model Meeting {
+  id                    String          @id @default(cuid())
+  group_id              String
+  date                  DateTime
+  notes                 String?
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
+
+  // Relations
+  group                 Group           @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  attendance            MeetingAttendance[]
+
+  @@index([group_id])
+  @@index([date])
+}
+
+// MeetingAttendance model
+model MeetingAttendance {
+  id                    String          @id @default(cuid())
+  meeting_id            String
+  member_id             String
+  present               Boolean         @default(false)
+  notes                 String?
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
+
+  // Relations
+  meeting               Meeting         @relation(fields: [meeting_id], references: [id], onDelete: Cascade)
+  member                User           @relation(fields: [member_id], references: [id], onDelete: Cascade)
+
+  @@index([meeting_id])
+  @@index([member_id])
+  @@unique([meeting_id, member_id])
+}
+
+// AuditLog model for tracking changes
+model AuditLog {
+  id                    String          @id @default(cuid())
+  entity_type           String          // "Contribution", "Loan", "User", etc.
+  entity_id             String
+  action                String          // "CREATE", "UPDATE", "DELETE"
+  changes               String?         // JSON string of changes
+  performed_by          String
+  timestamp             DateTime        @default(now())
+
+  @@index([entity_type, entity_id])
+  @@index([performed_by])
+  @@index([timestamp])
+}
